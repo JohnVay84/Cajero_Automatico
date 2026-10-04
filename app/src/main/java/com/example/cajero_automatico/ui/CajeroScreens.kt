@@ -38,13 +38,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cajero_automatico.data.CajeroModel
 import com.example.cajero_automatico.data.ReciboTransaccion
+import com.example.cajero_automatico.data.SharedPreferencesManager
+import com.example.cajero_automatico.ui.theme.Cajero_AutomaticoTheme
 
 // PALETA DE 3 COLORES CLAROS SEGÚN EL PROMPT:
 // Color 1 (Fondo general): Azul muy claro / Blanco hielo
@@ -65,7 +70,33 @@ val ColorRojoAlerta = Color(0xFFD32F2F)
  */
 @Composable
 fun CajeroAppContent(viewModel: CajeroViewModel) {
+    CajeroAppContent(
+        mensajeNotificacion = viewModel.mensajeNotificacion,
+        esErrorNotificacion = viewModel.esErrorNotificacion,
+        pantallaActual = viewModel.pantallaActual,
+        mostrarMensajeDespedida = viewModel.mostrarMensajeDespedida,
+        mostrarReciboDialog = viewModel.mostrarReciboDialog,
+        reciboParaMostrar = viewModel.reciboParaMostrar,
+        onDescartarNotificacion = { viewModel.descartarNotificacion() },
+        onConfirmarDespedida = { viewModel.cerrarSesionYSalir() },
+        onCerrarRecibo = { viewModel.mostrarReciboDialog = false },
+        viewModel = viewModel
+    )
+}
 
+@Composable
+fun CajeroAppContent(
+    mensajeNotificacion: String?,
+    esErrorNotificacion: Boolean,
+    pantallaActual: PantallaCajero,
+    mostrarMensajeDespedida: Boolean,
+    mostrarReciboDialog: Boolean,
+    reciboParaMostrar: ReciboTransaccion?,
+    onDescartarNotificacion: () -> Unit,
+    onConfirmarDespedida: () -> Unit,
+    onCerrarRecibo: () -> Unit,
+    viewModel: CajeroViewModel
+) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = ColorFondoClaro
@@ -88,17 +119,17 @@ fun CajeroAppContent(viewModel: CajeroViewModel) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Mensaje de notificación / error (como "Fondos insuficientes para este retiro")
-                viewModel.mensajeNotificacion?.let { mensaje ->
+                mensajeNotificacion?.let { mensaje ->
                     NotificacionBanner(
                         mensaje = mensaje,
-                        esError = viewModel.esErrorNotificacion,
-                        onDescartar = { viewModel.descartarNotificacion() }
+                        esError = esErrorNotificacion,
+                        onDescartar = onDescartarNotificacion
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
                 // Renderizado condicional según la pantalla activa
-                when (viewModel.pantallaActual) {
+                when (pantallaActual) {
                     PantallaCajero.LOGIN -> LoginScreen(viewModel)
                     PantallaCajero.MENU_PRINCIPAL -> MenuPrincipalScreen(viewModel)
                     PantallaCajero.CONSIGNAR_INGRESO_MONTO,
@@ -112,17 +143,17 @@ fun CajeroAppContent(viewModel: CajeroViewModel) {
             }
 
             // Diálogo Modal de Despedida: "Gracias por utilizar nuestros servicios"
-            if (viewModel.mostrarMensajeDespedida) {
+            if (mostrarMensajeDespedida) {
                 DialogoDespedida(
-                    onConfirmar = { viewModel.cerrarSesionYSalir() }
+                    onConfirmar = onConfirmarDespedida
                 )
             }
 
             // Diálogo Modal de Recibo Impreso
-            if (viewModel.mostrarReciboDialog) {
+            if (mostrarReciboDialog) {
                 DialogoRecibo(
-                    recibo = viewModel.reciboParaMostrar,
-                    onCerrar = { viewModel.mostrarReciboDialog = false }
+                    recibo = reciboParaMostrar,
+                    onCerrar = onCerrarRecibo
                 )
             }
         }
@@ -153,7 +184,7 @@ fun HeaderCajero() {
                 color = ColorAzulOscuroTexto
             )
             Text(
-                text = "Banco Nacional - Red de Servicios",
+                text = "Banco Pobre",
                 fontSize = 14.sp,
                 color = Color.Gray
             )
@@ -219,7 +250,7 @@ fun LoginScreen(viewModel: CajeroViewModel) {
                     onClick = { esTarjetaSeleccionada = false },
                     colors = RadioButtonDefaults.colors(selectedColor = ColorAzulBanquero)
                 )
-                Text(text = "PIN de 5 dígitos de la App", fontSize = 15.sp)
+                Text(text = "PIN", fontSize = 15.sp)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -250,7 +281,7 @@ fun LoginScreen(viewModel: CajeroViewModel) {
                 colors = ButtonDefaults.buttonColors(containerColor = ColorAzulBanquero),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(text = "Ingresar al Cajero", fontSize = 16.sp, color = Color.White)
+                Text(text = "Ingresar", fontSize = 16.sp, color = Color.White)
             }
         }
     }
@@ -295,7 +326,7 @@ fun MenuPrincipalScreen(viewModel: CajeroViewModel) {
 
             // Botón Consignar Dinero
             BotonMenuOpcion(
-                texto = "Botón Consignar Dinero",
+                texto = "Consignar Dinero",
                 onClick = { viewModel.irA(PantallaCajero.CONSIGNAR_INGRESO_MONTO) }
             )
 
@@ -303,7 +334,7 @@ fun MenuPrincipalScreen(viewModel: CajeroViewModel) {
 
             // Botón Retirar Dinero
             BotonMenuOpcion(
-                texto = "Botón Retirar Dinero",
+                texto = "Retirar Dinero",
                 onClick = { viewModel.irA(PantallaCajero.RETIRAR_INGRESO_MONTO) }
             )
 
@@ -311,7 +342,7 @@ fun MenuPrincipalScreen(viewModel: CajeroViewModel) {
 
             // Botón Visualizar Saldo
             BotonMenuOpcion(
-                texto = "Botón Visualizar Saldo",
+                texto = "Visualizar Saldo",
                 onClick = { viewModel.irA(PantallaCajero.VISUALIZAR_SALDO) }
             )
 
@@ -374,7 +405,7 @@ fun ConsignarScreen(viewModel: CajeroViewModel) {
                 // Campo texto (flotante y transparente) Valor a consignar
                 OutlinedTextFieldTransparente(
                     value = viewModel.inputMontoConsignar,
-                    onValueChange = { viewModel.inputMontoConsignar = it },
+                    onValueChange = { viewModel.inputMontoConsignar = viewModel.formatearConSeparadorDeMiles(it) },
                     label = "Valor a consignar ($)",
                     keyboardType = KeyboardType.Number
                 )
@@ -388,7 +419,7 @@ fun ConsignarScreen(viewModel: CajeroViewModel) {
                         .height(48.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ColorAzulBanquero)
                 ) {
-                    Text(text = "Botón Aceptar")
+                    Text(text = "Aceptar")
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -399,13 +430,13 @@ fun ConsignarScreen(viewModel: CajeroViewModel) {
                         .fillMaxWidth()
                         .height(48.dp)
                 ) {
-                    Text(text = "Botón Cancelar y volver")
+                    Text(text = "Cancelar y volver")
                 }
 
             } else {
                 // Paso 2: Insertar Dinero en ranura y Confirmar Consignación
                 Text(
-                    text = "Monto a consignar: ${viewModel.model.formatearMoneda(viewModel.inputMontoConsignar.toDoubleOrNull() ?: 0.0)}",
+                    text = "Monto a consignar: ${viewModel.model.formatearMoneda(viewModel.obtenerMontoNumerico(viewModel.inputMontoConsignar))}",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -462,7 +493,7 @@ fun ConsignarScreen(viewModel: CajeroViewModel) {
                         onClick = { viewModel.activarSalir() },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(text = "Botón Salir", fontSize = 12.sp, color = ColorRojoAlerta)
+                        Text(text = "Salir", fontSize = 12.sp, color = ColorRojoAlerta)
                     }
                 }
 
@@ -474,7 +505,7 @@ fun ConsignarScreen(viewModel: CajeroViewModel) {
                         .fillMaxWidth()
                         .height(44.dp)
                 ) {
-                    Text(text = "Botón Cancelar y volver", fontSize = 13.sp)
+                    Text(text = "Cancelar y volver", fontSize = 13.sp)
                 }
             }
         }
@@ -518,7 +549,7 @@ fun RetirarScreen(viewModel: CajeroViewModel) {
                     // Campo texto (flotante y transparente) Valor a retirar
                     OutlinedTextFieldTransparente(
                         value = viewModel.inputMontoRetirar,
-                        onValueChange = { viewModel.inputMontoRetirar = it },
+                        onValueChange = { viewModel.inputMontoRetirar = viewModel.formatearConSeparadorDeMiles(it) },
                         label = "Valor a retirar ($)",
                         keyboardType = KeyboardType.Number
                     )
@@ -532,7 +563,7 @@ fun RetirarScreen(viewModel: CajeroViewModel) {
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = ColorAzulBanquero)
                     ) {
-                        Text(text = "Botón Aceptar")
+                        Text(text = "Aceptar")
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -543,13 +574,13 @@ fun RetirarScreen(viewModel: CajeroViewModel) {
                             .fillMaxWidth()
                             .height(48.dp)
                     ) {
-                        Text(text = "Botón Cancelar y volver")
+                        Text(text = "Cancelar y volver")
                     }
                 }
 
                 PantallaCajero.RETIRAR_INGRESO_PIN -> {
                     Text(
-                        text = "Valor a retirar: ${viewModel.model.formatearMoneda(viewModel.inputMontoRetirar.toDoubleOrNull() ?: 0.0)}",
+                        text = "Valor a retirar: ${viewModel.model.formatearMoneda(viewModel.obtenerMontoNumerico(viewModel.inputMontoRetirar))}",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -585,7 +616,7 @@ fun RetirarScreen(viewModel: CajeroViewModel) {
                             .fillMaxWidth()
                             .height(48.dp)
                     ) {
-                        Text(text = "Botón Cancelar y volver")
+                        Text(text = "Cancelar y volver")
                     }
                 }
 
@@ -607,7 +638,7 @@ fun RetirarScreen(viewModel: CajeroViewModel) {
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = ColorAzulBanquero)
                     ) {
-                        Text(text = "Botón Imprimir recibo")
+                        Text(text = "Imprimir recibo")
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -620,7 +651,7 @@ fun RetirarScreen(viewModel: CajeroViewModel) {
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = ColorAzulOscuroTexto)
                     ) {
-                        Text(text = "Botón Mostrar Saldo Restante")
+                        Text(text = "Mostrar Saldo Restante")
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -707,7 +738,7 @@ fun VisualizarSaldoScreen(viewModel: CajeroViewModel) {
                     .height(48.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ColorAzulBanquero)
             ) {
-                Text(text = "Botón Volver a Menú anterior")
+                Text(text = "Volver a Menú anterior")
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -719,7 +750,7 @@ fun VisualizarSaldoScreen(viewModel: CajeroViewModel) {
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(text = "Botón Salir", color = ColorRojoAlerta)
+                Text(text = "Salir", color = ColorRojoAlerta)
             }
         }
     }
@@ -799,7 +830,7 @@ fun CambiarClaveScreen(viewModel: CajeroViewModel) {
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(text = "Botón Volver a Menú Anterior")
+                Text(text = "Volver a Menú Anterior")
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -811,7 +842,7 @@ fun CambiarClaveScreen(viewModel: CajeroViewModel) {
                     .fillMaxWidth()
                     .height(48.dp)
             ) {
-                Text(text = "Botón Salir", color = ColorRojoAlerta)
+                Text(text = "Salir", color = ColorRojoAlerta)
             }
         }
     }
@@ -986,4 +1017,28 @@ fun DialogoRecibo(
         },
         containerColor = ColorSuperficieBlanca
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CajeroAppContentPreview() {
+    val context = LocalContext.current
+    val mockPrefs = remember { SharedPreferencesManager(context) }
+    val mockModel = remember { CajeroModel(mockPrefs) }
+    val mockViewModel = remember { CajeroViewModel(mockModel) }
+
+    Cajero_AutomaticoTheme {
+        CajeroAppContent(
+            mensajeNotificacion = null,
+            esErrorNotificacion = false,
+            pantallaActual = PantallaCajero.LOGIN,
+            mostrarMensajeDespedida = false,
+            mostrarReciboDialog = false,
+            reciboParaMostrar = null,
+            onDescartarNotificacion = {},
+            onConfirmarDespedida = {},
+            onCerrarRecibo = {},
+            viewModel = mockViewModel
+        )
+    }
 }

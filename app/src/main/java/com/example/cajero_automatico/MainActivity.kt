@@ -9,7 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.cajero_automatico.data.CajeroModel
 import com.example.cajero_automatico.data.SharedPreferencesManager
@@ -61,9 +63,14 @@ class MainActivity : ComponentActivity() {
 /**
  * Preview de la interfaz del Cajero Automático
  */
-@Preview(showBackground = true)
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun PreviewCajeroApp() {
+    val context = LocalContext.current
+    val mockPrefs = remember { SharedPreferencesManager(context) }
+    val mockModel = remember { CajeroModel(mockPrefs) }
+    val mockViewModel = remember { CajeroViewModel(mockModel) }
+
     MaterialTheme(
         colorScheme = lightColorScheme(
             primary = ColorAzulBanquero,
@@ -72,7 +79,7 @@ fun PreviewCajeroApp() {
         )
     ) {
         Surface(modifier = Modifier.fillMaxSize()) {
-            // Preview estático
+            CajeroAppContent(viewModel = mockViewModel)
         }
     }
 }

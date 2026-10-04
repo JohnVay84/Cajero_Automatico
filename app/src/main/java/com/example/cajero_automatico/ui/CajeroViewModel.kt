@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import com.example.cajero_automatico.data.CajeroModel
 import com.example.cajero_automatico.data.ReciboTransaccion
 import com.example.cajero_automatico.data.ResultadoOperacion
+import java.text.NumberFormat
+import java.util.Locale
 
 /**
  * PantallaCajero
@@ -93,11 +95,29 @@ class CajeroViewModel(val model: CajeroModel) : ViewModel() {
     }
 
     /**
+     * Formatea una cadena de texto agregando separadores de miles según se digita.
+     */
+    fun formatearConSeparadorDeMiles(input: String): String {
+        val digitos = input.filter { it.isDigit() }
+        if (digitos.isEmpty()) return ""
+        val numero = digitos.toLongOrNull() ?: return digitos
+        val formato = NumberFormat.getNumberInstance(Locale.Builder().setLanguage("es").setRegion("CO").build())
+        return formato.format(numero)
+    }
+
+    /**
+     * Extrae el valor numérico Double de una cadena formateada con separadores de miles.
+     */
+    fun obtenerMontoNumerico(texto: String): Double {
+        return texto.filter { it.isDigit() }.toDoubleOrNull() ?: 0.0
+    }
+
+    /**
      * Paso 1 de consignación: Valida el monto ingresado antes de insertar dinero en la ranura.
      */
     fun prepararConsignacion() {
-        val monto = inputMontoConsignar.toDoubleOrNull()
-        if (monto == null || monto <= 0) {
+        val monto = obtenerMontoNumerico(inputMontoConsignar)
+        if (monto <= 0) {
             mostrarNotificacion("Ingrese un valor válido a consignar.", esError = true)
             return
         }
@@ -108,7 +128,7 @@ class CajeroViewModel(val model: CajeroModel) : ViewModel() {
      * Paso 2 de consignación: Inserta el dinero en la ranura y confirma la transacción.
      */
     fun confirmarConsignacion() {
-        val monto = inputMontoConsignar.toDoubleOrNull() ?: 0.0
+        val monto = obtenerMontoNumerico(inputMontoConsignar)
         when (val resultado = model.consignarDinero(monto)) {
             is ResultadoOperacion.Exito -> {
                 reciboParaMostrar = model.ultimoRecibo
@@ -124,8 +144,8 @@ class CajeroViewModel(val model: CajeroModel) : ViewModel() {
      * Paso 1 de retiro: Valida el monto a retirar y solicita la clave/PIN.
      */
     fun prepararRetiro() {
-        val monto = inputMontoRetirar.toDoubleOrNull()
-        if (monto == null || monto <= 0) {
+        val monto = obtenerMontoNumerico(inputMontoRetirar)
+        if (monto <= 0) {
             mostrarNotificacion("Ingrese un valor válido a retirar.", esError = true)
             return
         }
@@ -144,7 +164,7 @@ class CajeroViewModel(val model: CajeroModel) : ViewModel() {
      * Muestra "Fondos insuficientes para este retiro" si el monto supera el saldo.
      */
     fun confirmarRetiro() {
-        val monto = inputMontoRetirar.toDoubleOrNull() ?: 0.0
+        val monto = obtenerMontoNumerico(inputMontoRetirar)
         when (val resultado = model.retirarDinero(monto, inputClaveTransaccion)) {
             is ResultadoOperacion.Exito -> {
                 reciboParaMostrar = model.ultimoRecibo
